@@ -1,0 +1,140 @@
+version: '3.7'
+
+networks: 
+  crypto-network:
+
+volumes:
+  kong:
+  keycloak:
+      
+services:    
+  keycloak:
+    image: jboss/keycloak:7.0.1
+    ports:
+      - 8081:8081
+    networks:
+      - crypto-network
+    command: ["-Djboss.http.port=8081"]
+    environment:
+      - DB_VENDOR=h2
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=password
+      - KEYCLOAK_IMPORT=/tmp/realm-export.json
+    volumes:
+      - ./realm-export.json:/tmp/realm-export.json
+         
+  portfolio-service:
+    image: voitek/mod8_portfolio-service:0.0.1
+    networks:
+      - crypto-network
+    ports:
+      - "8180:8180"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev-docker      
+  
+  support-service:
+    image: voitek/mod8_support-service:0.0.1
+    networks:
+      - crypto-network
+    ports:
+      - "8181:8181"
+    depends_on:
+      - keycloak       
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev-docker     
+  
+  pricing-service:
+    image: voitek/mod8_pricing-service:0.0.1
+    networks:
+      - crypto-network
+    ports:
+      - "8184:8184"   
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev-docker  
+      
+  ui-mvc-service:
+    image: voitek/mod8_crypto-portfolio-mvc:0.0.2
+    networks:
+      - crypto-network
+    ports:
+      - "8080:8080"
+    depends_on:
+      - pricing-service       
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev-docker    
+      
+  kong-db:
+    image: postgres:9.6
+    volumes:
+      - kong:/var/lib/postgresql/data
+    networks:
+      - crypto-network
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_DB:       api-gw
+      POSTGRES_USER:     kong
+      POSTGRES_PASSWORD: 
+
+  ui-service-bff:
+    image: voitek/mod8_ui-service-bff:0.0.1
+    networks:
+      - crypto-network
+    ports:
+      - 8185:8185
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev-docker
+     
+  crypto-portfolio-react:
+    image: voitek/mod8_crypto-portfolio-react:0.0.1
+    networks:
+      - crypto-network
+    ports:
+      - 3000:3000  
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev-docker          
+
+  kong:
+    image: kong:1.4.2-alpine-oidc
+    depends_on:
+      - kong-db
+    networks:
+      - crypto-network
+    ports:
+      - "8000:8000" # Listener
+      - "8001:8001" # Admin API
+      - "8443:8443" # Listener  (SSL)
+      - "8444:8444" # Admin API (SSL) 
+    environment:
+      KONG_DATABASE:         postgres
+      KONG_PG_HOST:          kong-db
+      KONG_PG_PORT:          5432
+      KONG_PG_DATABASE:      api-gw
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG:  /dev/stderr
+      KONG_ADMIN_ERROR_LOG:  /dev/stderr
+      KONG_PROXY_LISTEN:     0.0.0.0:8000, 0.0.0.0:8443 ssl
+      KONG_ADMIN_LISTEN:     0.0.0.0:8001, 0.0.0.0:8444 ssl
+      KONG_PLUGINS:          bundled,oidc
+      #KONG_LOG_LEVEL:        debug
+    build:
+      context: ./kong/
+      dockerfile: Dockerfile
+      
+  konga:
+    image: pantsel/konga:0.14.7
+    depends_on:
+      - kong
+    networks:
+      - crypto-network
+    ports:
+      - "1337:1337" # konga
+    environment:
+      DB_ADAPTER: postgres
+      DB_HOST: kong-db
+      DB_PORT: '5432'
+      DB_USER: kong
+      DB_DATABASE: api-gw
+      NODE_ENV: development
+      
