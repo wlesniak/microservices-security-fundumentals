@@ -25,17 +25,17 @@ login with `admin/password`
 You need to create a user to login to the application.
 
 > Manage -> User -> Add User
-Fill in username, email, first and last name.
+> Fill in username, email, first and last name.
 ![Alt text](img/add-user.png "Add New User")
 > Then in credentials set a new password, switch temporary to OFF.
 ![Alt text](img/add-user-credentials.png "Update Credentials")
-> Now we need to add the user roles, 
-Role Mappings -> Client Roles
-Select crypto-portfolio
-Then move:
+> Now we need to add the user roles.
+> Role Mappings -> Client Roles
+> Select crypto-portfolio
+> Then move:
 - portfolio-admin
 - user
-From Available Roles to Assgined Roles.
+> From Available Roles to Assgined Roles.
 ![Alt text](img/add-user-mappings.png "Update Credentials")
 
 ### Kong API Gateway
